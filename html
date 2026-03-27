@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高尾式マラソン予測ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .tab-active { border-bottom: 3px solid #2563eb; color: #1e40af; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen py-8 px-4">
+    <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-indigo-600 to-blue-700 p-8 text-white text-center">
+            <h1 class="text-2xl md:text-3xl font-bold mb-2">マラソン・トレーニング予測ツール</h1>
+            <p class="text-blue-100 text-sm italic">高尾 憲司 氏の研究成果に基づくシミュレーター</p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-200">
+            <button onclick="switchTab('time')" id="tab-time" class="flex-1 py-4 text-sm font-bold tab-active">完走タイム予測 (2021)</button>
+            <button onclick="switchTab('training')" id="tab-training" class="flex-1 py-4 text-sm font-bold text-slate-400 hover:text-slate-600">練習ペース設定 (2025)</button>
+        </div>
+
+        <div class="p-8">
+            <!-- TAB 1: Marathon Time Prediction (2021) -->
+            <div id="section-time" class="space-y-6">
+                <div class="p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 text-[11px] leading-relaxed mb-6">
+                    <p class="font-bold mb-1">出典：2021年 博士論文</p>
+                    20mシャトルランの成績と過去のトレーニング変数から、現在のマラソン完走ポテンシャルを予測します。
+                </div>
+
+                <!-- Gender Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-3">性別</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="setGender('male')" id="btn-male" class="gender-btn py-3 px-6 rounded-xl border-2 font-bold transition-all border-blue-600 bg-blue-50 text-blue-700">男性</button>
+                        <button onclick="setGender('female')" id="btn-female" class="gender-btn py-3 px-6 rounded-xl border-2 font-bold transition-all border-slate-200 text-slate-500 hover:border-pink-300">女性</button>
+                    </div>
+                </div>
+
+                <!-- Inputs -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">20mSRT回数</label>
+                        <div class="relative">
+                            <input type="number" id="srt_count" placeholder="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-semibold">
+                            <span class="absolute right-3 top-3.5 text-slate-400 text-sm">回</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">月間走行距離</label>
+                        <div class="relative">
+                            <input type="number" id="distance" placeholder="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-semibold">
+                            <span class="absolute right-3 top-3.5 text-slate-400 text-sm">km</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">ランニング歴</label>
+                        <div class="relative">
+                            <input type="number" id="experience" placeholder="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-semibold">
+                            <span class="absolute right-3 top-3.5 text-slate-400 text-sm">年</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="calculateTime()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg transition-all">
+                    タイムを予測する
+                </button>
+
+                <div id="result-time" class="hidden mt-8 p-6 bg-slate-900 rounded-2xl text-center text-white">
+                    <p class="text-blue-400 text-xs font-bold uppercase tracking-widest mb-2">予測完走タイム</p>
+                    <div id="display-time" class="text-5xl font-black mb-1">--:--:--</div>
+                    <div id="display-pace" class="text-slate-400 text-sm italic">--'--"/km</div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Training Pace Setting (2025) -->
+            <div id="section-training" class="hidden space-y-6">
+                <div class="p-4 bg-emerald-50 border-l-4 border-emerald-400 text-emerald-800 text-[11px] leading-relaxed mb-6">
+                    <p class="font-bold mb-1">出典：2025年 スポーツパフォーマンス研究 17巻</p>
+                    目標（または現在）のマラソン走速度から、20km走やハーフマラソンなどの「コンティニュアス・トレーニング」に最適な走速度を算出します。
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-3">目標マラソンタイム</label>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="relative">
+                            <input type="number" id="target-h" value="4" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold">
+                            <span class="block text-center text-[10px] text-slate-400 mt-1">時間</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="target-m" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold">
+                            <span class="block text-center text-[10px] text-slate-400 mt-1">分</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="target-s" value="0" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold">
+                            <span class="block text-center text-[10px] text-slate-400 mt-1">秒</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="calculateTrainingPace()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-lg shadow-lg transition-all">
+                    推奨練習ペースを算出
+                </button>
+
+                <div id="result-training" class="hidden mt-8">
+                    <div class="p-6 bg-slate-900 rounded-2xl text-center text-white">
+                        <p class="text-emerald-400 text-xs font-bold uppercase tracking-widest mb-2">推奨トレーニングペース (20km/Half)</p>
+                        <div id="display-train-pace" class="text-5xl font-black mb-1">--'--"/km</div>
+                        <div id="display-train-vel" class="text-slate-400 text-sm">走速度: -- km/h</div>
+                    </div>
+                    <div class="mt-4 p-4 bg-amber-50 rounded-xl text-[11px] text-amber-800 leading-relaxed border border-amber-100">
+                        <p class="font-bold mb-1">💡 理論的背景：</p>
+                        論文に基づき、完走目標速度よりやや速いペース（男性：+1.668km/h係数等）が推奨練習ペースとして算出されます。このペースでの距離走が、安全かつ効果的な完走に寄与します。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Math Formulas Details -->
+        <div class="px-8 py-6 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400">
+            <details class="cursor-pointer">
+                <summary class="font-bold uppercase tracking-widest flex justify-between">予測式の詳細</summary>
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 font-mono leading-relaxed">
+                    <div>
+                        <p class="font-bold text-slate-600">[2021年式: 完走タイム]</p>
+                        男: -82.7x - 2579.6log(km) - 2185.2log(yr) + 28278.7<br>
+                        女: -89.4x - 3684.0log(km) - 2053.8log(yr) + 30298.2
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-600">[2025年式: 練習走速度]</p>
+                        男: 練習速(km/h) = 0.929 × マラソン速 + 1.668<br>
+                        女: 練習速(km/h) = 0.900 × マラソン速 + 1.831
+                    </div>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <script>
+        let currentGender = 'male';
+
+        function switchTab(tab) {
+            const timeSect = document.getElementById('section-time');
+            const trainingSect = document.getElementById('section-training');
+            const timeTab = document.getElementById('tab-time');
+            const trainingTab = document.getElementById('tab-training');
+
+            if (tab === 'time') {
+                timeSect.classList.remove('hidden');
+                trainingSect.classList.add('hidden');
+                timeTab.classList.add('tab-active');
+                timeTab.classList.remove('text-slate-400');
+                trainingTab.classList.remove('tab-active');
+                trainingTab.classList.add('text-slate-400');
+            } else {
+                timeSect.classList.add('hidden');
+                trainingSect.classList.remove('hidden');
+                trainingTab.classList.add('tab-active');
+                trainingTab.classList.remove('text-slate-400');
+                timeTab.classList.remove('tab-active');
+                timeTab.classList.add('text-slate-400');
+            }
+        }
+
+        function setGender(gender) {
+            currentGender = gender;
+            const maleBtn = document.getElementById('btn-male');
+            const femaleBtn = document.getElementById('btn-female');
+            if (gender === 'male') {
+                maleBtn.classList.add('border-blue-600', 'bg-blue-50', 'text-blue-700');
+                femaleBtn.classList.remove('border-pink-600', 'bg-pink-50', 'text-pink-700');
+                femaleBtn.classList.add('border-slate-200', 'text-slate-500');
+            } else {
+                femaleBtn.classList.add('border-pink-600', 'bg-pink-50', 'text-pink-700');
+                maleBtn.classList.remove('border-blue-600', 'bg-blue-50', 'text-blue-700');
+                maleBtn.classList.add('border-slate-200', 'text-slate-500');
+            }
+        }
+
+        // Calculation: 2021 Model
+        function calculateTime() {
+            const srt = parseFloat(document.getElementById('srt_count').value) || 0;
+            const dist = parseFloat(document.getElementById('distance').value) || 1;
+            const exp = parseFloat(document.getElementById('experience').value) || 1;
+
+            if (srt <= 0) return;
+
+            let totalSeconds = 0;
+            if (currentGender === 'male') {
+                totalSeconds = (-82.707 * srt) - (2579.611 * Math.log10(dist)) - (2185.199 * Math.log10(exp)) + 28278.729;
+            } else {
+                totalSeconds = (-89.374 * srt) - (3683.995 * Math.log10(dist)) - (2053.755 * Math.log10(exp)) + 30298.162;
+            }
+
+            if (totalSeconds < 7200) totalSeconds = 7200;
+
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = Math.floor(totalSeconds % 60);
+            document.getElementById('display-time').innerText = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+            const paceSec = totalSeconds / 42.195;
+            document.getElementById('display-pace').innerText = `${Math.floor(paceSec/60)}'${Math.floor(paceSec%60).toString().padStart(2, '0')}"/km`;
+            document.getElementById('result-time').classList.remove('hidden');
+        }
+
+        // Calculation: 2025 Model
+        function calculateTrainingPace() {
+            const th = parseFloat(document.getElementById('target-h').value) || 0;
+            const tm = parseFloat(document.getElementById('target-m').value) || 0;
+            const ts = parseFloat(document.getElementById('target-s').value) || 0;
+
+            const totalHours = th + (tm / 60) + (ts / 3600);
+            if (totalHours <= 0) return;
+
+            const marathonVelocity = 42.195 / totalHours; // km/h
+
+            let trainingVelocity = 0;
+            if (currentGender === 'male') {
+                // Formula: 0.929 * MarathonVel + 1.668
+                trainingVelocity = (0.929 * marathonVelocity) + 1.668;
+            } else {
+                // Formula: 0.900 * MarathonVel + 1.831
+                trainingVelocity = (0.900 * marathonVelocity) + 1.831;
+            }
+
+            const paceMinPerKm = 60 / trainingVelocity;
+            const pM = Math.floor(paceMinPerKm);
+            const pS = Math.floor((paceMinPerKm - pM) * 60);
+
+            document.getElementById('display-train-pace').innerText = `${pM}'${pS.toString().padStart(2, '0')}"/km`;
+            document.getElementById('display-train-vel').innerText = `推定走速度: ${trainingVelocity.toFixed(2)} km/h (マラソン速度: ${marathonVelocity.toFixed(2)} km/h)`;
+            document.getElementById('result-training').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
